@@ -1,19 +1,23 @@
-import type { Page } from "playwright";
-import type { BrowserState, Frame, Metadata, Viewport } from "@bap-protocol/spec";
+import type { CDPSession, Page } from "playwright";
+import type { BrowserState, Frame, Metadata, Rect, Viewport } from "@bap-protocol/spec";
 import { PROTOCOL_VERSION } from "@bap-protocol/spec";
 import { axNodesToNodes, type CDPAXNode } from "./accessibility.js";
+import { buildRectMap } from "./layout.js";
+import { detectWidgets } from "../widgets/detect.js";
 
 export async function extractBrowserState(page: Page): Promise<BrowserState> {
   const url = page.url();
-  const title = await page.title();
-  const [viewport, metadata, axNodes] = await Promise.all([
+  const [title, viewport, metadata] = await Promise.all([
+    page.title(),
     extractViewport(page),
     extractMetadata(page),
-    extractAxTree(page),
   ]);
 
+  const { axNodes, rectByBackendId } = await extractAxAndLayout(page, viewport);
   const frames: Frame[] = [{ id: "main", url }];
-  const nodes = axNodesToNodes(axNodes, "main");
+  const nodes = axNodesToNodes(axNodes, "main", rectByBackendId);
+  const byAxId = new Map(axNodes.map((n) => [n.nodeId, n]));
+  const widgets = detectWidgets(nodes, byAxId);
 
   return {
     version: PROTOCOL_VERSION,
@@ -23,18 +27,29 @@ export async function extractBrowserState(page: Page): Promise<BrowserState> {
     viewport,
     frames,
     nodes,
-    widgets: [],
+    widgets,
     overlays: [],
     metadata,
   };
 }
 
-async function extractAxTree(page: Page): Promise<CDPAXNode[]> {
-  const client = await page.context().newCDPSession(page);
+async function extractAxAndLayout(
+  page: Page,
+  viewport: Viewport,
+): Promise<{ axNodes: CDPAXNode[]; rectByBackendId: Map<number, Rect> }> {
+  const client: CDPSession = await page.context().newCDPSession(page);
   try {
-    await client.send("Accessibility.enable");
-    const result = (await client.send("Accessibility.getFullAXTree")) as { nodes: CDPAXNode[] };
-    return result.nodes;
+    await Promise.all([
+      client.send("Accessibility.enable"),
+      client.send("DOMSnapshot.enable"),
+    ]);
+    const [axRes, snapRes] = await Promise.all([
+      client.send("Accessibility.getFullAXTree"),
+      client.send("DOMSnapshot.captureSnapshot", { computedStyles: [] }),
+    ]);
+    const axNodes = (axRes as { nodes: CDPAXNode[] }).nodes;
+    const rectByBackendId = buildRectMap(snapRes, viewport);
+    return { axNodes, rectByBackendId };
   } finally {
     await client.detach();
   }

@@ -59,4 +59,21 @@ describe("Session", () => {
     expect(state.metadata.timezone).toBeTruthy();
     expect(state.metadata.language).toBeTruthy();
   });
+
+  it("extracts rect for visible interactive nodes", async () => {
+    const html = `<!doctype html>
+<html>
+  <head><title>Rect</title></head>
+  <body style="margin:0">
+    <button style="position:absolute;left:50px;top:100px;width:120px;height:40px">Go</button>
+  </body>
+</html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+    const button = state.nodes.find((n) => n.role === "button");
+    expect(button?.rect, "button has a rect").toBeDefined();
+    expect(button?.rect?.width).toBeCloseTo(120, 0);
+    expect(button?.rect?.height).toBeCloseTo(40, 0);
+    expect(button?.rect?.inViewport).toBe(true);
+  });
 });

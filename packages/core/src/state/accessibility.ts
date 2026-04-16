@@ -1,4 +1,4 @@
-import type { Locator, Node, NodeState } from "@bap-protocol/spec";
+import type { Locator, Node, NodeState, Rect } from "@bap-protocol/spec";
 
 interface CDPAXValue {
   type: string;
@@ -45,7 +45,11 @@ const INTERACTABLE_ROLES = new Set([
 
 const EDITABLE_ROLES = new Set(["textbox", "searchbox", "combobox", "spinbutton"]);
 
-export function axNodesToNodes(axNodes: CDPAXNode[], frameId: string): Node[] {
+export function axNodesToNodes(
+  axNodes: CDPAXNode[],
+  frameId: string,
+  rectByBackendId?: Map<number, Rect>,
+): Node[] {
   const byId = new Map(axNodes.map((n) => [n.nodeId, n]));
   const parentOf = new Map<string, string>();
   for (const n of axNodes) {
@@ -83,6 +87,11 @@ export function axNodesToNodes(axNodes: CDPAXNode[], frameId: string): Node[] {
 
     const parentId = parentOf.get(ax.nodeId);
     if (parentId) node.parentId = parentId;
+
+    if (ax.backendDOMNodeId !== undefined && rectByBackendId) {
+      const rect = rectByBackendId.get(ax.backendDOMNodeId);
+      if (rect) node.rect = rect;
+    }
 
     nodes.push(node);
   }

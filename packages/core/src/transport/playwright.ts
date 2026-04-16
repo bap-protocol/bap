@@ -1,7 +1,8 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
-import type { BrowserState } from "@bap-protocol/spec";
+import type { Action, ActionResult, BrowserState } from "@bap-protocol/spec";
 import type { GotoOptions, Transport, TransportLaunchOptions } from "./index.js";
 import { extractBrowserState } from "../state/extract.js";
+import { dispatchAction } from "../actions/dispatch.js";
 
 export class PlaywrightTransport implements Transport {
   private constructor(
@@ -25,6 +26,10 @@ export class PlaywrightTransport implements Transport {
 
   async snapshot(): Promise<BrowserState> {
     return extractBrowserState(this.page);
+  }
+
+  async dispatch(action: Action, lastState: BrowserState): Promise<ActionResult> {
+    return dispatchAction(this.page, action, lastState);
   }
 
   async close(): Promise<void> {
