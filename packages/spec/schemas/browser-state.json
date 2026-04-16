@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bap-protocol.dev/schemas/0.1/browser-state.json",
+  "title": "BrowserState",
+  "description": "Semantic, deterministic snapshot of a browser page suitable for AI agent consumption.",
+  "type": "object",
+  "required": [
+    "version",
+    "capturedAt",
+    "url",
+    "title",
+    "viewport",
+    "frames",
+    "nodes",
+    "widgets",
+    "overlays",
+    "metadata"
+  ],
+  "properties": {
+    "version": { "type": "string", "description": "Protocol version." },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "url": { "type": "string", "format": "uri" },
+    "title": { "type": "string" },
+    "viewport": { "$ref": "#/$defs/Viewport" },
+    "frames": { "type": "array", "items": { "$ref": "#/$defs/Frame" } },
+    "nodes": { "type": "array", "items": { "$ref": "#/$defs/Node" } },
+    "widgets": { "type": "array", "items": { "$ref": "#/$defs/Widget" } },
+    "focus": { "$ref": "#/$defs/NodeRef" },
+    "overlays": { "type": "array", "items": { "$ref": "#/$defs/Overlay" } },
+    "metadata": { "$ref": "#/$defs/Metadata" }
+  },
+  "$defs": {
+    "Viewport": {
+      "type": "object",
+      "required": ["width", "height", "devicePixelRatio", "scrollX", "scrollY"],
+      "properties": {
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "devicePixelRatio": { "type": "number" },
+        "scrollX": { "type": "number" },
+        "scrollY": { "type": "number" }
+      }
+    },
+    "Frame": {
+      "type": "object",
+      "required": ["id", "url"],
+      "properties": {
+        "id": { "type": "string" },
+        "url": { "type": "string" },
+        "parentFrameId": { "type": "string" }
+      }
+    },
+    "Node": {
+      "type": "object",
+      "required": ["id", "role", "interactable", "editable", "state", "childIds", "frameId", "locator"],
+      "properties": {
+        "id": { "type": "string" },
+        "role": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "value": { "type": "string" },
+        "interactable": { "type": "boolean" },
+        "editable": { "type": "boolean" },
+        "state": { "$ref": "#/$defs/NodeState" },
+        "rect": { "$ref": "#/$defs/Rect" },
+        "parentId": { "type": "string" },
+        "childIds": { "type": "array", "items": { "type": "string" } },
+        "frameId": { "type": "string" },
+        "locator": { "$ref": "#/$defs/Locator" }
+      }
+    },
+    "NodeState": {
+      "type": "object",
+      "properties": {
+        "disabled": { "type": "boolean" },
+        "checked": { "oneOf": [{ "type": "boolean" }, { "const": "mixed" }] },
+        "expanded": { "type": "boolean" },
+        "selected": { "type": "boolean" },
+        "required": { "type": "boolean" },
+        "invalid": { "type": "boolean" },
+        "readonly": { "type": "boolean" },
+        "focused": { "type": "boolean" },
+        "hidden": { "type": "boolean" }
+      }
+    },
+    "Rect": {
+      "type": "object",
+      "required": ["x", "y", "width", "height", "inViewport"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "inViewport": { "type": "boolean" }
+      }
+    },
+    "Locator": {
+      "type": "object",
+      "required": ["strategy", "value"],
+      "properties": {
+        "strategy": { "enum": ["id", "testid", "role-name", "xpath", "css"] },
+        "value": { "type": "string" }
+      }
+    },
+    "Widget": {
+      "type": "object",
+      "required": ["id", "type", "nodeIds", "state", "hints"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": {
+          "enum": [
+            "slider",
+            "datepicker",
+            "daterange-picker",
+            "combobox",
+            "listbox",
+            "menu",
+            "tabs",
+            "accordion",
+            "fileupload",
+            "radiogroup",
+            "checkboxgroup",
+            "toggleswitch",
+            "dialog",
+            "tooltip"
+          ]
+        },
+        "nodeIds": { "type": "array", "items": { "type": "string" } },
+        "state": { "type": "object" },
+        "hints": { "type": "object" }
+      }
+    },
+    "Overlay": {
+      "type": "object",
+      "required": ["nodeId", "type", "blocking"],
+      "properties": {
+        "nodeId": { "type": "string" },
+        "type": { "enum": ["modal", "toast", "tooltip", "menu"] },
+        "blocking": { "type": "boolean" }
+      }
+    },
+    "NodeRef": {
+      "type": "object",
+      "required": ["nodeId", "frameId"],
+      "properties": {
+        "nodeId": { "type": "string" },
+        "frameId": { "type": "string" }
+      }
+    },
+    "Metadata": {
+      "type": "object",
+      "required": ["userAgent", "timezone", "language"],
+      "properties": {
+        "userAgent": { "type": "string" },
+        "timezone": { "type": "string" },
+        "language": { "type": "string" }
+      }
+    }
+  }
+}

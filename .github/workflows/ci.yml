@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm -r build
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Test
+        run: pnpm -r test -- --passWithNoTests
+
+  schema-lint:
+    name: JSON Schema lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate JSON Schemas
+        run: |
+          npm install --no-save ajv ajv-formats
+          node -e "
+            const Ajv = require('ajv/dist/2020');
+            const addFormats = require('ajv-formats');
+            const fs = require('fs');
+            const path = require('path');
+            const ajv = new Ajv({ strict: false, allErrors: true });
+            addFormats(ajv);
+            const dir = 'packages/spec/schemas';
+            const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
+            for (const f of files) {
+              const schema = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+              try {
+                ajv.compile(schema);
+                console.log('OK: ' + f);
+              } catch (e) {
+                console.error('FAIL: ' + f + ' — ' + e.message);
+                process.exit(1);
+              }
+            }
+          "

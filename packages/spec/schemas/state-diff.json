@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bap-protocol.dev/schemas/0.1/state-diff.json",
+  "title": "StateDiff",
+  "description": "Deterministic difference between two BrowserState snapshots.",
+  "type": "object",
+  "required": ["version", "from", "to", "changes"],
+  "properties": {
+    "version": { "type": "string" },
+    "from": { "type": "string", "format": "date-time" },
+    "to": { "type": "string", "format": "date-time" },
+    "changes": { "type": "array", "items": { "$ref": "#/$defs/Change" } }
+  },
+  "$defs": {
+    "Change": {
+      "oneOf": [
+        { "$ref": "#/$defs/NodeAdded" },
+        { "$ref": "#/$defs/NodeRemoved" },
+        { "$ref": "#/$defs/NodeModified" },
+        { "$ref": "#/$defs/WidgetAdded" },
+        { "$ref": "#/$defs/WidgetRemoved" },
+        { "$ref": "#/$defs/WidgetModified" },
+        { "$ref": "#/$defs/FocusChanged" },
+        { "$ref": "#/$defs/UrlChanged" },
+        { "$ref": "#/$defs/TitleChanged" },
+        { "$ref": "#/$defs/OverlayAppeared" },
+        { "$ref": "#/$defs/OverlayDismissed" },
+        { "$ref": "#/$defs/ViewportChanged" }
+      ]
+    },
+    "NodeRef": {
+      "type": "object",
+      "required": ["nodeId", "frameId"],
+      "properties": {
+        "nodeId": { "type": "string" },
+        "frameId": { "type": "string" }
+      }
+    },
+    "NodeAdded": {
+      "type": "object",
+      "required": ["kind", "node"],
+      "properties": {
+        "kind": { "const": "node-added" },
+        "node": { "$ref": "https://bap-protocol.dev/schemas/0.1/browser-state.json#/$defs/Node" }
+      }
+    },
+    "NodeRemoved": {
+      "type": "object",
+      "required": ["kind", "nodeId", "frameId"],
+      "properties": {
+        "kind": { "const": "node-removed" },
+        "nodeId": { "type": "string" },
+        "frameId": { "type": "string" }
+      }
+    },
+    "NodeModified": {
+      "type": "object",
+      "required": ["kind", "nodeId", "frameId", "fields"],
+      "properties": {
+        "kind": { "const": "node-modified" },
+        "nodeId": { "type": "string" },
+        "frameId": { "type": "string" },
+        "fields": { "type": "object" }
+      }
+    },
+    "WidgetAdded": {
+      "type": "object",
+      "required": ["kind", "widget"],
+      "properties": {
+        "kind": { "const": "widget-added" },
+        "widget": { "$ref": "https://bap-protocol.dev/schemas/0.1/browser-state.json#/$defs/Widget" }
+      }
+    },
+    "WidgetRemoved": {
+      "type": "object",
+      "required": ["kind", "widgetId"],
+      "properties": {
+        "kind": { "const": "widget-removed" },
+        "widgetId": { "type": "string" }
+      }
+    },
+    "WidgetModified": {
+      "type": "object",
+      "required": ["kind", "widgetId", "fields"],
+      "properties": {
+        "kind": { "const": "widget-modified" },
+        "widgetId": { "type": "string" },
+        "fields": { "type": "object" }
+      }
+    },
+    "FocusChanged": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "const": "focus-changed" },
+        "from": { "$ref": "#/$defs/NodeRef" },
+        "to": { "$ref": "#/$defs/NodeRef" }
+      }
+    },
+    "UrlChanged": {
+      "type": "object",
+      "required": ["kind", "from", "to"],
+      "properties": {
+        "kind": { "const": "url-changed" },
+        "from": { "type": "string" },
+        "to": { "type": "string" }
+      }
+    },
+    "TitleChanged": {
+      "type": "object",
+      "required": ["kind", "from", "to"],
+      "properties": {
+        "kind": { "const": "title-changed" },
+        "from": { "type": "string" },
+        "to": { "type": "string" }
+      }
+    },
+    "OverlayAppeared": {
+      "type": "object",
+      "required": ["kind", "overlay"],
+      "properties": {
+        "kind": { "const": "overlay-appeared" },
+        "overlay": { "$ref": "https://bap-protocol.dev/schemas/0.1/browser-state.json#/$defs/Overlay" }
+      }
+    },
+    "OverlayDismissed": {
+      "type": "object",
+      "required": ["kind", "nodeId"],
+      "properties": {
+        "kind": { "const": "overlay-dismissed" },
+        "nodeId": { "type": "string" }
+      }
+    },
+    "ViewportChanged": {
+      "type": "object",
+      "required": ["kind", "fields"],
+      "properties": {
+        "kind": { "const": "viewport-changed" },
+        "fields": { "type": "object" }
+      }
+    }
+  }
+}

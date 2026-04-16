@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bap-protocol.dev/schemas/0.1/action.json",
+  "title": "Action",
+  "description": "A structured command an agent issues against a browser implementation.",
+  "oneOf": [
+    { "$ref": "#/$defs/NavigateAction" },
+    { "$ref": "#/$defs/ClickAction" },
+    { "$ref": "#/$defs/FillAction" },
+    { "$ref": "#/$defs/SelectAction" },
+    { "$ref": "#/$defs/SlideAction" },
+    { "$ref": "#/$defs/PickDateAction" },
+    { "$ref": "#/$defs/UploadAction" },
+    { "$ref": "#/$defs/ScrollAction" },
+    { "$ref": "#/$defs/WaitAction" }
+  ],
+  "$defs": {
+    "ActionBase": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timeoutMs": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "NodeRef": {
+      "type": "object",
+      "required": ["nodeId", "frameId"],
+      "properties": {
+        "nodeId": { "type": "string" },
+        "frameId": { "type": "string" }
+      }
+    },
+    "WidgetRef": {
+      "type": "object",
+      "required": ["widgetId"],
+      "properties": {
+        "widgetId": { "type": "string" }
+      }
+    },
+    "Modifier": { "enum": ["alt", "control", "meta", "shift"] },
+    "NavigateAction": {
+      "allOf": [
+        { "$ref": "#/$defs/ActionBase" },
+        {
+          "type": "object",
+          "required": ["type", "url"],
+          "properties": {
+            "type": { "const": "navigate" },
+            "url": { "type": "string" },
+            "waitUntil": { "enum": ["load", "domcontentloaded", "networkidle"] }
+          }
+        }
+      ]
+    },
+    "ClickAction": {
+      "allOf": [
+        { "$ref": "#/$defs/ActionBase" },
+        {
+          "type": "object",
+          "required": ["type", "target"],
+          "properties": {
+            "type": { "const": "click" },
+            "target": { "$ref": "#/$defs/NodeRef" },
+            "button": { "enum": ["left", "right", "middle"] },
+            "clickCount": { "enum": [1, 2] },
+            "modifiers": { "type": "array", "items": { "$ref": "#/$defs/Modifier" } }
+          }
+        }
+      ]
+    },
+    "FillAction": {
+      "allOf": [
+        { "$ref": "#/$defs/ActionBase" },
+        {
+          "type": "object",
+          "required": ["type", "target", "value"],
+          "properties": {
+            "type": { "const": "fill" },
+            "target": { "$ref": "#/$defs/NodeRef" },
+            "value": { "type": "string" },
+            "clear": { "type": "boolean" },
+            "submit": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "SelectAction": {
+      "allOf": [
+        { "$ref": "#/$defs/ActionBase" },
+        {
+          "type": "object",
+          "required": ["type", "target", "values"],
+          "properties": {
+            "type": { "const": "select" },
+            "target": {
+              "oneOf": [{ "$ref": "#/$defs/NodeRef" }, { "$ref": "#/$defs/WidgetRef" }]
+            },
+            "values": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      ]
+    },
+    "SlideAction": {
+      "allOf": [
+        { "$ref": "#/$defs/ActionBase" },
+        {
+          "type": "object",
+          "required": ["type", "target", "value"],
+          "properties": {
+            "type": { "const": "slide" },
+            "target": { "$ref": "#/$defs/WidgetRef" },
+            "value": {
+              "oneOf": [
+                { "type": "number" },
+                {
+                  "type": "array",
+                  "items": { "type": "number" },
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "PickDateAction": {
+      "allOf": [
+        { "$ref": "#/$defs/ActionBase" },
+        {
+          "type": "object",
+          "required": ["type", "target", "date"],
+          "properties": {
+            "type": { "const": "pick-date" },
+            "target": { "$ref": "#/$defs/WidgetRef" },
+            "date": {
+              "oneOf": [
+                { "type": "string" },
+                {
+                  "type": "object",
+                  "required": ["start", "end"],
+                  "properties": {
+                    "start": { "type": "string" },
+                    "end": { "type": "string" }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "UploadAction": {
+      "allOf": [
+        { "$ref": "#/$defs/ActionBase" },
+        {
+          "type": "object",
+          "required": ["type", "target", "files"],
+          "properties": {
+            "type": { "const": "upload" },
+            "target": {
+              "oneOf": [{ "$ref": "#/$defs/NodeRef" }, { "$ref": "#/$defs/WidgetRef" }]
+            },
+            "files": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      ]
+    },
+    "ScrollAction": {
+      "allOf": [
+        { "$ref": "#/$defs/ActionBase" },
+        {
+          "type": "object",
+          "required": ["type", "to"],
+          "properties": {
+            "type": { "const": "scroll" },
+            "target": { "$ref": "#/$defs/NodeRef" },
+            "to": {
+              "oneOf": [
+                { "enum": ["top", "bottom"] },
+                {
+                  "type": "object",
+                  "required": ["x", "y"],
+                  "properties": {
+                    "x": { "type": "number" },
+                    "y": { "type": "number" }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": ["delta"],
+                  "properties": {
+                    "delta": {
+                      "type": "object",
+                      "required": ["x", "y"],
+                      "properties": {
+                        "x": { "type": "number" },
+                        "y": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "WaitAction": {
+      "allOf": [
+        { "$ref": "#/$defs/ActionBase" },
+        {
+          "type": "object",
+          "required": ["type", "condition"],
+          "properties": {
+            "type": { "const": "wait" },
+            "condition": {
+              "oneOf": [
+                { "type": "object", "required": ["kind"], "properties": { "kind": { "const": "navigation" } } },
+                { "type": "object", "required": ["kind", "locator"], "properties": { "kind": { "const": "node-appears" } } },
+                { "type": "object", "required": ["kind", "locator"], "properties": { "kind": { "const": "node-disappears" } } },
+                { "type": "object", "required": ["kind"], "properties": { "kind": { "const": "network-idle" }, "idleMs": { "type": "integer" } } },
+                { "type": "object", "required": ["kind", "ms"], "properties": { "kind": { "const": "duration" }, "ms": { "type": "integer" } } }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
