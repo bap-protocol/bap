@@ -1,7 +1,8 @@
-import type { Node, Widget } from "@bap-protocol/spec";
+import type { Node } from "@bap-protocol/spec";
 import type { CDPAXNode } from "../state/accessibility.js";
+import type { WidgetDraft } from "./detect.js";
 
-export function detectSlider(id: string, node: Node, ax: CDPAXNode): Widget | null {
+export function detectSlider(node: Node, ax: CDPAXNode): WidgetDraft | null {
   if (node.role !== "slider") return null;
 
   const min = numberProp(ax, "valuemin");
@@ -18,7 +19,6 @@ export function detectSlider(id: string, node: Node, ax: CDPAXNode): Widget | nu
   }
 
   return {
-    id,
     type: "slider",
     nodeIds: [node.id],
     state,

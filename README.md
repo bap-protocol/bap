@@ -65,7 +65,7 @@ Four primitives, documented as versioned RFCs:
 
 ## Roadmap
 
-See [`ROADMAP.md`](./ROADMAP.md) for the public roadmap to v1.0.
+v1.0 targets a stable spec, a TypeScript reference implementation, a compliance test suite, and a demo benchmark. Interim drafts and RFCs live under [`spec/`](./spec).
 
 ## Contributing
 

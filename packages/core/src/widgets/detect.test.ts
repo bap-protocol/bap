@@ -64,4 +64,46 @@ describe("Widget detection", () => {
     const state = await session.snapshot();
     expect(state.widgets).toEqual([]);
   });
+
+  it("detects a native <select> as a combobox widget", async () => {
+    const html = `<!doctype html>
+<html>
+  <head><title>Select</title></head>
+  <body>
+    <select aria-label="Country">
+      <option>USA</option>
+      <option>Canada</option>
+    </select>
+  </body>
+</html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+
+    const combos = state.widgets.filter((w) => w.type === "combobox");
+    expect(combos, "at least one combobox detected").not.toHaveLength(0);
+    const w = combos[0]!;
+    expect(w.state).toMatchObject({ multi: false, open: false });
+    expect(w.hints).toMatchObject({ searchable: true });
+  });
+
+  it("detects an ARIA listbox with multiselectable", async () => {
+    const html = `<!doctype html>
+<html>
+  <head><title>Listbox</title></head>
+  <body>
+    <ul role="listbox" aria-label="Colors" aria-multiselectable="true" tabindex="0">
+      <li role="option">Red</li>
+      <li role="option" aria-selected="true">Green</li>
+      <li role="option">Blue</li>
+    </ul>
+  </body>
+</html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+
+    const listbox = state.widgets.find((w) => w.type === "listbox");
+    expect(listbox, "listbox widget detected").toBeDefined();
+    expect(listbox!.state).toMatchObject({ multi: true });
+    expect(listbox!.hints).toMatchObject({ searchable: false });
+  });
 });
