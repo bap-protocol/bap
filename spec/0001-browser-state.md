@@ -260,6 +260,14 @@ Implementations must not include style hashes, generated React keys, framework-s
 - Capturing user intent or reasoning. That lives above BAP, in the agent.
 - Abstracting over different user-interaction models (keyboard vs. pointer vs. touch). BAP describes what exists; `Action` (RFC 0002) describes what to do.
 
+## Review questions
+
+External maintainers reviewing this RFC: three questions that would most shape v0.1. Post responses as a GitHub Discussion on this RFC or open a PR with suggested edits.
+
+1. **Cross-origin iframes.** Is the proposed `role: "frame"` + `state.inaccessible: true` shape sufficient for your framework, or do you need a richer handle (e.g. a sealed snapshot from the child frame's own origin when your agent has credentials for both)?
+2. **Locator stability.** In your framework, do `testid` locators survive DOM churn reliably enough to be the default, or do you see `role-name` as the more durable identity for diffing across snapshots?
+3. **Virtualized lists.** Your agents hit react-window / virtuoso frequently. Do you want `virtual-list` as a first-class widget in v0.1, or is "the list reports total count separately and BAP says nothing" workable?
+
 ## References
 
 - W3C ARIA 1.2 — basis for role and state vocabulary.

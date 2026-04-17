@@ -58,6 +58,8 @@ export function axNodesToNodes(
     }
   }
 
+  const prefix = (axId: string) => `${frameId}:${axId}`;
+
   const nodes: Node[] = [];
   for (const ax of axNodes) {
     if (ax.ignored) continue;
@@ -69,12 +71,14 @@ export function axNodesToNodes(
     const value = ax.value?.value;
 
     const node: Node = {
-      id: ax.nodeId,
+      id: prefix(ax.nodeId),
       role,
-      childIds: (ax.childIds ?? []).filter((cid) => {
-        const c = byId.get(cid);
-        return c !== undefined && !c.ignored;
-      }),
+      childIds: (ax.childIds ?? [])
+        .filter((cid) => {
+          const c = byId.get(cid);
+          return c !== undefined && !c.ignored;
+        })
+        .map(prefix),
       frameId,
       interactable: INTERACTABLE_ROLES.has(role),
       editable: EDITABLE_ROLES.has(role),
@@ -86,7 +90,7 @@ export function axNodesToNodes(
     if (value !== undefined && value !== null) node.value = String(value);
 
     const parentId = parentOf.get(ax.nodeId);
-    if (parentId) node.parentId = parentId;
+    if (parentId) node.parentId = prefix(parentId);
 
     if (ax.backendDOMNodeId !== undefined && rectByBackendId) {
       const rect = rectByBackendId.get(ax.backendDOMNodeId);
@@ -110,35 +114,54 @@ function extractState(props: CDPAXProperty[]): NodeState {
     const v = p.value.value;
     switch (p.name) {
       case "disabled":
-        if (v === true) state.disabled = true;
+        if (coerceBool(v) === true) state.disabled = true;
         break;
-      case "checked":
-        if (v === true || v === false || v === "mixed") state.checked = v;
+      case "checked": {
+        if (v === "mixed") {
+          state.checked = "mixed";
+        } else {
+          const b = coerceBool(v);
+          if (b !== undefined) state.checked = b;
+        }
         break;
-      case "expanded":
-        if (typeof v === "boolean") state.expanded = v;
+      }
+      case "expanded": {
+        const b = coerceBool(v);
+        if (b !== undefined) state.expanded = b;
         break;
-      case "selected":
-        if (typeof v === "boolean") state.selected = v;
+      }
+      case "selected": {
+        const b = coerceBool(v);
+        if (b !== undefined) state.selected = b;
         break;
+      }
       case "required":
-        if (v === true) state.required = true;
+        if (coerceBool(v) === true) state.required = true;
         break;
       case "readonly":
-        if (v === true) state.readonly = true;
+        if (coerceBool(v) === true) state.readonly = true;
         break;
       case "focused":
-        if (v === true) state.focused = true;
+        if (coerceBool(v) === true) state.focused = true;
         break;
       case "invalid":
-        if (v === true || (typeof v === "string" && v !== "false")) state.invalid = true;
+        if (coerceBool(v) === true || (typeof v === "string" && v !== "false" && v !== "")) {
+          state.invalid = true;
+        }
         break;
       case "hidden":
-        if (v === true) state.hidden = true;
+        if (coerceBool(v) === true) state.hidden = true;
         break;
     }
   }
   return state;
+}
+
+function coerceBool(v: unknown): boolean | undefined {
+  if (typeof v === "boolean") return v;
+  if (v === "true") return true;
+  if (v === "false") return false;
+  return undefined;
 }
 
 function computeLocator(role: string, name: string | undefined): Locator {

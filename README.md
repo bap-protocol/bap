@@ -8,12 +8,35 @@ Status: `pre-alpha` · Spec version: `0.1-draft` · Not yet published
 
 ## 30-second pitch
 
-Sentinel, the reference agent built on BAP, runs a real Amazon purchase flow in ~100 seconds at $0.003 per run using the same LLM other frameworks use. On the same flow, Stagehand times out after 5 minutes. Same prompt. Same model. Same network.
+Every agent framework today invents its own schema for "what the agent sees" and "what the agent does." None interoperate. Swapping the browser layer means rewriting detection, state extraction, and action dispatch.
 
-The difference is not the LLM — it is the layer between the agent and the browser. BAP is that layer, open-sourced so you can build on it.
+BAP is the layer between agent and browser — versioned RFCs, a reference implementation in TypeScript, and a compliance suite anyone can run against their own. What MCP is to tool use, BAP aims to be for the browser.
+
+## Quickstart
+
+```ts
+import { Session } from "@bap-protocol/core";
+
+const session = await Session.launch();
+await session.goto("https://example.com");
+
+const state = await session.snapshot();
+const submit = state.nodes.find((n) => n.role === "button" && n.name === "Submit")!;
+
+const result = await session.dispatch({
+  type: "click",
+  target: { nodeId: submit.id, frameId: submit.frameId },
+});
+
+console.log(result.success, result.durationMs);
+await session.close();
+```
+
+Or from the shell:
 
 ```bash
-npx bap-protocol demo amazon    # coming Phase 3 (W10)
+pnpm --filter @bap-protocol/cli build
+node packages/cli/dist/index.js inspect https://example.com | jq .widgets
 ```
 
 ## Why it exists
@@ -61,7 +84,7 @@ Four primitives, documented as versioned RFCs:
 | [`@bap-protocol/spec`](./packages/spec) | JSON Schemas + TypeScript types | functional |
 | [`@bap-protocol/core`](./packages/core) | Reference implementation in TypeScript | scaffolding |
 | `@bap-protocol/compliance` | Conformance test suite (MUI-based fixtures) | planned (W8) |
-| `@bap-protocol/cli` | `npx bap-protocol inspect | act | demo` | planned (W10) |
+| [`@bap-protocol/cli`](./packages/cli) | `bap inspect <url>`, `bap act <url> <action.json>` | functional |
 
 ## Roadmap
 

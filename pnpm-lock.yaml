@@ -26,6 +26,9 @@ importers:
       '@bap-protocol/core':
         specifier: workspace:*
         version: link:../core
+      '@bap-protocol/spec':
+        specifier: workspace:*
+        version: link:../spec
     devDependencies:
       tsup:
         specifier: ^8.0.0

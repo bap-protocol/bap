@@ -194,3 +194,11 @@ After: the email field has a value; a dialog has appeared claiming the email is 
 - Timeline/video reconstruction. Sentinel Cloud concern.
 - Diff compression beyond the structural changes above.
 - Custom change kinds. v0.1 enumerates all permissible kinds.
+
+## Review questions
+
+External maintainers: post responses as a GitHub Discussion on this RFC or open a PR with suggested edits.
+
+1. **Nested field encoding.** `node-modified` and `widget-modified` use dot-paths (`"state.disabled": true`). Does your framework consume this well, or would you prefer full-object replacement for the subtree? Dot-paths compress but split deep state across many keys.
+2. **Diff invertibility.** For replay and time-travel debugging, would you need `apply(diff(A,B), B) === A` to hold? That forces every change kind to carry both before and after values, roughly doubling diff size. Worth it?
+3. **Noise suppression.** When a framework re-renders a large subtree cosmetically, the structural diff is noisy. Should v0.1 formalize noise-suppression rules (e.g. "ignore changes that only affect `locator.value`"), or leave it to implementations?

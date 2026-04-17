@@ -28,7 +28,9 @@ describe("Session", () => {
 
     expect(state.version).toBe("0.1");
     expect(state.title).toBe("Smoke");
-    expect(state.frames).toEqual([expect.objectContaining({ id: "main" })]);
+    expect(state.frames).toHaveLength(1);
+    expect(state.frames[0]!.id).toMatch(/^[0-9A-F]+$/);
+    expect(state.frames[0]!.parentFrameId).toBeUndefined();
     expect(state.nodes.length).toBeGreaterThan(0);
 
     const button = state.nodes.find((n) => n.role === "button");

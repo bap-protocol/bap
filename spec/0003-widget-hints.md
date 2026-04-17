@@ -218,3 +218,11 @@ Custom widget types are intentionally **not** part of v0.1. The catalog above co
 - Animation state.
 - Rendering-layer details (transform, opacity).
 - Accessibility compliance scoring (separate tool concern).
+
+## Review questions
+
+External maintainers: post responses as a GitHub Discussion on this RFC or open a PR with suggested edits.
+
+1. **Missing widget.** Run through the last ten pages your agent touched — which composite control falls between BAP's current catalog and "just a bag of nodes"? Rich text editors, steppers, multi-select tag inputs, and virtualized lists are the usual candidates; others?
+2. **Framework heuristics.** Detection for MUI / Ant Design / Chakra often needs data-attribute or class-name signals. Do you want those heuristics inside the reference implementation (pro: shared), or explicitly forbidden at the protocol layer (pro: no framework lock-in)?
+3. **Widget identity across snapshots.** A widget's anchor node survives a re-render but its internals mutate — should `Widget.id` be preserved (so the diff emits `widget-modified`), or is widget-removed + widget-added cleaner for reasoning?

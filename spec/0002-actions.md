@@ -224,3 +224,11 @@ Result:
 - Low-level input events (mouseDown, keyDown). Transport concern.
 - Action recording/replay primitives. Sentinel Cloud concern.
 - Multi-tab coordination. Out of scope for v0.1; one session = one focused page.
+
+## Review questions
+
+External maintainers: post responses as a GitHub Discussion on this RFC or open a PR with suggested edits.
+
+1. **Hover and keyboard.** Your framework hits menus that only open on hover and flows that need arbitrary key sequences (Escape, Ctrl+A, Tab). Are you okay with `wait` + implementation-level heuristics in v0.1, or does that block adoption until v0.2 adds `hover` and `press`?
+2. **Multi-target batching.** "Click all matching checkboxes" / "fill these 10 fields" — do you issue N actions today, and would a single batched action materially change ergonomics, or is batching the agent's job?
+3. **Dry-run.** Would a `dryRun: true` flag returning the expected diff without applying the action unlock reasoning patterns you currently can't express, or is it a nice-to-have that doesn't pull its weight in the schema?

@@ -17,7 +17,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@bap-protocol/core": "workspace:*"
+    "@bap-protocol/core": "workspace:*",
+    "@bap-protocol/spec": "workspace:*"
   },
   "devDependencies": {
     "tsup": "^8.0.0",

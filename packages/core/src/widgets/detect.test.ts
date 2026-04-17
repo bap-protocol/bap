@@ -106,4 +106,140 @@ describe("Widget detection", () => {
     expect(listbox!.state).toMatchObject({ multi: true });
     expect(listbox!.hints).toMatchObject({ searchable: false });
   });
+
+  it("detects a radiogroup with options and current value", async () => {
+    const html = `<!doctype html>
+<html>
+  <head><title>Radio</title></head>
+  <body>
+    <div role="radiogroup" aria-label="Payment">
+      <div role="radio" aria-checked="false" aria-label="Visa" tabindex="0">Visa</div>
+      <div role="radio" aria-checked="true" aria-label="Mastercard" tabindex="0">Mastercard</div>
+      <div role="radio" aria-checked="false" aria-label="PayPal" tabindex="0">PayPal</div>
+    </div>
+  </body>
+</html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+
+    const rg = state.widgets.find((w) => w.type === "radiogroup");
+    expect(rg, "radiogroup detected").toBeDefined();
+    const s = rg!.state as { value: string | null; options: { label: string }[] };
+    expect(s.value).toBe("Mastercard");
+    expect(s.options.map((o) => o.label)).toEqual(["Visa", "Mastercard", "PayPal"]);
+  });
+
+  it("detects a checkboxgroup when a group contains only checkboxes", async () => {
+    const html = `<!doctype html>
+<html>
+  <head><title>Checkboxes</title></head>
+  <body>
+    <div role="group" aria-label="Toppings">
+      <div role="checkbox" aria-checked="true" aria-label="Cheese" tabindex="0">Cheese</div>
+      <div role="checkbox" aria-checked="false" aria-label="Olives" tabindex="0">Olives</div>
+      <div role="checkbox" aria-checked="true" aria-label="Mushrooms" tabindex="0">Mushrooms</div>
+    </div>
+  </body>
+</html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+
+    const cg = state.widgets.find((w) => w.type === "checkboxgroup");
+    expect(cg, "checkboxgroup detected").toBeDefined();
+    const s = cg!.state as { values: string[]; options: { label: string }[] };
+    expect(s.values).toEqual(["Cheese", "Mushrooms"]);
+    expect(s.options).toHaveLength(3);
+  });
+
+  it("does NOT detect a checkboxgroup when the group contains other controls", async () => {
+    const html = `<!doctype html>
+<html>
+  <head><title>Mixed group</title></head>
+  <body>
+    <div role="group" aria-label="Form">
+      <div role="checkbox" aria-checked="false" aria-label="Agree" tabindex="0">Agree</div>
+      <div role="checkbox" aria-checked="false" aria-label="Subscribe" tabindex="0">Subscribe</div>
+      <button>Submit</button>
+    </div>
+  </body>
+</html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+    expect(state.widgets.find((w) => w.type === "checkboxgroup")).toBeUndefined();
+  });
+
+  it("detects a toggleswitch with checked state", async () => {
+    const html = `<!doctype html>
+<html>
+  <head><title>Switch</title></head>
+  <body>
+    <button role="switch" aria-checked="true" aria-label="Notifications">On</button>
+  </body>
+</html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+
+    const sw = state.widgets.find((w) => w.type === "toggleswitch");
+    expect(sw, "toggleswitch detected").toBeDefined();
+    expect((sw!.state as { checked: boolean }).checked).toBe(true);
+  });
+
+  it("detects a native date input as a datepicker widget", async () => {
+    const html = `<!doctype html>
+<html><body>
+  <input type="date" aria-label="Birthday" value="2026-04-17" min="2000-01-01" max="2030-12-31" />
+</body></html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+
+    const dp = state.widgets.find((w) => w.type === "datepicker");
+    expect(dp, "datepicker detected").toBeDefined();
+    const s = dp!.state as { value: string | null; min?: string; max?: string; open: boolean };
+    expect(s.value).toBe("2026-04-17");
+    expect(s.min).toBe("2000-01-01");
+    expect(s.max).toBe("2030-12-31");
+    expect(s.open).toBe(false);
+  });
+
+  it("detects a daterange group with two date inputs as a daterange-picker", async () => {
+    const html = `<!doctype html>
+<html><body>
+  <div role="group" aria-label="Booking range">
+    <input type="date" aria-label="Check-in" value="2026-05-01" />
+    <input type="date" aria-label="Check-out" value="2026-05-05" />
+  </div>
+</body></html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+
+    const drp = state.widgets.find((w) => w.type === "daterange-picker");
+    expect(drp, "daterange-picker detected").toBeDefined();
+    const s = drp!.state as { start: string | null; end: string | null };
+    expect(s.start).toBe("2026-05-01");
+    expect(s.end).toBe("2026-05-05");
+
+    // Children must NOT also appear as separate datepickers.
+    const dps = state.widgets.filter((w) => w.type === "datepicker");
+    expect(dps).toHaveLength(0);
+  });
+
+  it("detects a file input as a fileupload widget with accept + multiple", async () => {
+    const html = `<!doctype html>
+<html>
+  <head><title>Upload</title></head>
+  <body>
+    <input type="file" aria-label="Avatar" accept="image/png, image/jpeg" multiple />
+  </body>
+</html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+
+    const fu = state.widgets.find((w) => w.type === "fileupload");
+    expect(fu, "fileupload detected").toBeDefined();
+    const s = fu!.state as { current: string[]; multiple: boolean; accept?: string[] };
+    expect(s.multiple).toBe(true);
+    expect(s.current).toEqual([]);
+    expect(s.accept).toEqual(["image/png", "image/jpeg"]);
+    expect((fu!.hints as { strategy: string }).strategy).toBe("input-change");
+  });
 });
