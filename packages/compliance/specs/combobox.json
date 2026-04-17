@@ -1,0 +1,15 @@
+{
+  "name": "combobox — native <select>",
+  "fixture": { "kind": "file", "path": "combobox.html" },
+  "expectations": {
+    "title": "BAP Compliance: combobox",
+    "widgets": [
+      {
+        "type": "combobox",
+        "state": { "multi": false, "open": false },
+        "hints": { "searchable": true, "optionsPopulatedOn": "always", "freeText": false }
+      }
+    ],
+    "overlays": []
+  }
+}

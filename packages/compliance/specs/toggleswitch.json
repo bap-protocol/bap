@@ -1,0 +1,14 @@
+{
+  "name": "toggleswitch — ARIA role=switch",
+  "fixture": { "kind": "file", "path": "toggleswitch.html" },
+  "expectations": {
+    "title": "BAP Compliance: toggleswitch",
+    "widgets": [
+      {
+        "type": "toggleswitch",
+        "state": { "checked": true }
+      }
+    ],
+    "overlays": []
+  }
+}

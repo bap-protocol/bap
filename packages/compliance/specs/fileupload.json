@@ -1,0 +1,15 @@
+{
+  "name": "fileupload — native input[type=file] with accept + multiple",
+  "fixture": { "kind": "file", "path": "fileupload.html" },
+  "expectations": {
+    "title": "BAP Compliance: fileupload",
+    "widgets": [
+      {
+        "type": "fileupload",
+        "state": { "multiple": true, "current": [], "accept": ["image/png", "image/jpeg"] },
+        "hints": { "strategy": "input-change" }
+      }
+    ],
+    "overlays": []
+  }
+}

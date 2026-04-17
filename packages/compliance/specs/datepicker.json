@@ -1,0 +1,14 @@
+{
+  "name": "datepicker — native input[type=date] with bounds",
+  "fixture": { "kind": "file", "path": "datepicker.html" },
+  "expectations": {
+    "title": "BAP Compliance: datepicker",
+    "widgets": [
+      {
+        "type": "datepicker",
+        "state": { "value": "2026-04-17", "min": "2000-01-01", "max": "2030-12-31", "open": false }
+      }
+    ],
+    "overlays": []
+  }
+}

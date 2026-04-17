@@ -1,0 +1,15 @@
+{
+  "name": "listbox — ARIA with aria-multiselectable",
+  "fixture": { "kind": "file", "path": "listbox.html" },
+  "expectations": {
+    "title": "BAP Compliance: listbox",
+    "widgets": [
+      {
+        "type": "listbox",
+        "state": { "multi": true, "open": false },
+        "hints": { "searchable": false }
+      }
+    ],
+    "overlays": []
+  }
+}

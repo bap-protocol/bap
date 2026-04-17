@@ -1,0 +1,14 @@
+{
+  "name": "checkboxgroup — ARIA group of checkboxes",
+  "fixture": { "kind": "file", "path": "checkboxgroup.html" },
+  "expectations": {
+    "title": "BAP Compliance: checkboxgroup",
+    "widgets": [
+      {
+        "type": "checkboxgroup",
+        "state": { "values": ["Cheese", "Mushrooms"] }
+      }
+    ],
+    "overlays": []
+  }
+}

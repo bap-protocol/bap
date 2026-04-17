@@ -1,0 +1,14 @@
+{
+  "name": "radiogroup — ARIA with checked option",
+  "fixture": { "kind": "file", "path": "radiogroup.html" },
+  "expectations": {
+    "title": "BAP Compliance: radiogroup",
+    "widgets": [
+      {
+        "type": "radiogroup",
+        "state": { "value": "Mastercard" }
+      }
+    ],
+    "overlays": []
+  }
+}

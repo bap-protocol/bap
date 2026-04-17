@@ -1,0 +1,14 @@
+{
+  "name": "daterange-picker — role=group with two native date inputs",
+  "fixture": { "kind": "file", "path": "daterange-picker.html" },
+  "expectations": {
+    "title": "BAP Compliance: daterange-picker",
+    "widgets": [
+      {
+        "type": "daterange-picker",
+        "state": { "start": "2026-05-01", "end": "2026-05-05", "open": false }
+      }
+    ],
+    "overlays": []
+  }
+}

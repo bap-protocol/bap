@@ -1,0 +1,14 @@
+{
+  "name": "dialog — role=dialog with aria-modal",
+  "fixture": { "kind": "file", "path": "dialog.html" },
+  "expectations": {
+    "title": "BAP Compliance: dialog",
+    "widgets": [
+      {
+        "type": "dialog",
+        "state": { "open": true, "modal": true, "title": "Confirm" }
+      }
+    ],
+    "overlays": [{ "type": "modal", "blocking": true }]
+  }
+}
