@@ -35,9 +35,13 @@ await session.close();
 Or from the shell:
 
 ```bash
-pnpm --filter @bap-protocol/cli build
+pnpm install
+pnpm -F @bap-protocol/core exec playwright install chromium    # one-time
+pnpm -r build
 node packages/cli/dist/index.js inspect https://example.com | jq .widgets
 ```
+
+The `playwright install` step is not automatic — skip it and you get "browser not found".
 
 ## Why it exists
 

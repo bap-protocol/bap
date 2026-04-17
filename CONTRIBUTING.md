@@ -14,17 +14,20 @@ We accept PRs once an RFC is finalized. Before then, implementation details may 
 
 ```bash
 pnpm install
-pnpm build
-pnpm test
+pnpm -F @bap-protocol/core exec playwright install chromium   # one-time, needed for tests + CLI
+pnpm -r build
+pnpm -r test
 ```
+
+`pnpm install` does not fetch browser binaries. Without the `playwright install` step, `pnpm test` and `bap inspect` / `bap act` fail with "browser not found".
 
 ### Project structure
 
 - `spec/` — protocol RFCs in Markdown
-- `packages/spec/` — JSON Schemas + generated TypeScript types
-- `packages/core/` — reference implementation
-- `packages/compliance/` — conformance test suite (planned)
-- `packages/cli/` — command-line tool (planned)
+- `packages/spec/` — JSON Schemas + TypeScript types
+- `packages/core/` — reference implementation (functional)
+- `packages/cli/` — command-line tool: `bap inspect`, `bap act` (functional)
+- `packages/compliance/` — conformance test suite (planned, Phase 3)
 
 ### Principles
 
