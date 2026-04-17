@@ -2,6 +2,7 @@ import type { Node, Widget } from "@bap-protocol/spec";
 import type { CDPAXNode } from "../state/accessibility.js";
 import type { DOMMeta } from "../state/dom-meta.js";
 import { detectSlider } from "./slider.js";
+import { detectStepper } from "./stepper.js";
 import { detectCombobox } from "./combobox.js";
 import { detectRadiogroup } from "./radiogroup.js";
 import { detectCheckboxgroup } from "./checkboxgroup.js";
@@ -62,6 +63,7 @@ function tryDetect(node: Node, ax: CDPAXNode, ctx: DetectContext): WidgetDraft |
     detectRadiogroup(node, ax, ctx) ??
     detectCheckboxgroup(node, ax, ctx) ??
     detectSlider(node, ax) ??
+    detectStepper(node, ax) ??
     detectCombobox(node, ax) ??
     detectToggleswitch(node, ax) ??
     detectFileupload(node, ax, ctx) ??

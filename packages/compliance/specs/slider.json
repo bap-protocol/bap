@@ -1,0 +1,16 @@
+{
+  "name": "slider — native input[type=range]",
+  "fixture": { "kind": "file", "path": "slider.html" },
+  "expectations": {
+    "title": "BAP Compliance: slider",
+    "minNodes": 2,
+    "widgets": [
+      {
+        "type": "slider",
+        "state": { "min": 0, "max": 100, "value": 40 },
+        "hints": { "fillStrategies": ["aria-valuenow", "keyboard", "drag"] }
+      }
+    ],
+    "overlays": []
+  }
+}

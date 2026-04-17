@@ -1,0 +1,15 @@
+{
+  "name": "stepper — native input[type=number]",
+  "fixture": { "kind": "file", "path": "stepper.html" },
+  "expectations": {
+    "title": "BAP Compliance: stepper",
+    "minNodes": 2,
+    "widgets": [
+      {
+        "type": "stepper",
+        "state": { "value": 2, "min": 1, "max": 10 }
+      }
+    ],
+    "overlays": []
+  }
+}

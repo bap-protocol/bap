@@ -110,6 +110,7 @@
         "type": {
           "enum": [
             "slider",
+            "stepper",
             "datepicker",
             "daterange-picker",
             "combobox",

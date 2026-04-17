@@ -173,6 +173,27 @@ interface ToggleswitchState {
 }
 ```
 
+### `stepper`
+
+```ts
+interface StepperState {
+  value: number;
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
+interface StepperHints {
+  /** Ordered fill strategies the implementation will try. */
+  fillStrategies: ("fill-value" | "keyboard" | "buttons")[];
+  /** Node IDs of the increment / decrement buttons if present. */
+  incrementNodeId?: string;
+  decrementNodeId?: string;
+}
+```
+
+Guest-count pickers, quantity selectors, numeric filter fields. Detected via `role="spinbutton"` (covers both native `<input type="number">` and ARIA widgets). Custom steppers that expose as `button + display + button` surfaces are a v0.2 detection target.
+
 ### `dialog` / `tooltip`
 
 ```ts
@@ -208,9 +229,8 @@ Custom widget types are intentionally **not** part of v0.1. The catalog above co
 
 1. **Virtualized list widgets.** Scrollable lists that render only visible rows (react-window, virtuoso) behave like a widget but are currently *not* in the catalog. *Add in v0.1 as `virtual-list`, or defer?*
 2. **Rich text editors.** Contenteditable editors with formatting toolbars are ubiquitous but extremely heterogeneous. *Defer to v1.1; v0.1 treats them as plain textboxes.*
-3. **Stepper / number-input-with-buttons.** Common in booking forms. *Add as `stepper` in v0.1, or treat as combobox/spinner?* Current leaning: add as `stepper`.
-4. **Map widgets.** Out of scope for v0.1.
-5. **Widget identity across snapshots.** When the DOM is rerendered but the semantic widget is "the same", is the `Widget.id` preserved? *Leaning: yes, stable per (frameId, anchor-locator); formally defined in RFC 0004.*
+3. **Map widgets.** Out of scope for v0.1.
+4. **Widget identity across snapshots.** When the DOM is rerendered but the semantic widget is "the same", is the `Widget.id` preserved? *Leaning: yes, stable per (frameId, anchor-locator); formally defined in RFC 0004.*
 
 ## Non-goals
 
@@ -223,6 +243,6 @@ Custom widget types are intentionally **not** part of v0.1. The catalog above co
 
 External maintainers: post responses as a GitHub Discussion on this RFC or open a PR with suggested edits.
 
-1. **Missing widget.** Run through the last ten pages your agent touched — which composite control falls between BAP's current catalog and "just a bag of nodes"? Rich text editors, steppers, multi-select tag inputs, and virtualized lists are the usual candidates; others?
+1. **Missing widget.** Run through the last ten pages your agent touched — which composite control falls between BAP's current catalog and "just a bag of nodes"? Rich text editors, multi-select tag inputs, and virtualized lists are the usual candidates; others?
 2. **Framework heuristics.** Detection for MUI / Ant Design / Chakra often needs data-attribute or class-name signals. Do you want those heuristics inside the reference implementation (pro: shared), or explicitly forbidden at the protocol layer (pro: no framework lock-in)?
 3. **Widget identity across snapshots.** A widget's anchor node survives a re-render but its internals mutate — should `Widget.id` be preserved (so the diff emits `widget-modified`), or is widget-removed + widget-added cleaner for reasoning?

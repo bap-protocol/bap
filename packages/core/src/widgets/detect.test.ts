@@ -223,6 +223,44 @@ describe("Widget detection", () => {
     expect(dps).toHaveLength(0);
   });
 
+  it("detects a native number input as a stepper widget", async () => {
+    const html = `<!doctype html>
+<html><body>
+  <input type="number" aria-label="Guests" value="2" min="1" max="10" />
+</body></html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+
+    const stepper = state.widgets.find((w) => w.type === "stepper");
+    expect(stepper, "stepper detected").toBeDefined();
+    const s = stepper!.state as { value: number; min?: number; max?: number };
+    expect(s.value).toBe(2);
+    expect(s.min).toBe(1);
+    expect(s.max).toBe(10);
+
+    const anchor = state.nodes.find((n) => n.id === stepper!.nodeIds[0]);
+    expect(anchor?.role).toBe("spinbutton");
+    expect(anchor?.name).toBe("Guests");
+  });
+
+  it("detects a custom ARIA spinbutton as a stepper", async () => {
+    const html = `<!doctype html>
+<html><body>
+  <div role="spinbutton"
+       aria-label="Quantity"
+       aria-valuenow="5"
+       aria-valuemin="0"
+       aria-valuemax="99"
+       tabindex="0">5</div>
+</body></html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+
+    const stepper = state.widgets.find((w) => w.type === "stepper");
+    expect(stepper, "stepper detected").toBeDefined();
+    expect(stepper!.state).toMatchObject({ value: 5, min: 0, max: 99 });
+  });
+
   it("detects a file input as a fileupload widget with accept + multiple", async () => {
     const html = `<!doctype html>
 <html>

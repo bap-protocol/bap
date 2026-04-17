@@ -71,6 +71,7 @@ export interface Locator {
 
 export type WidgetType =
   | "slider"
+  | "stepper"
   | "datepicker"
   | "daterange-picker"
   | "combobox"

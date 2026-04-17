@@ -21,6 +21,21 @@ export interface SliderHints {
   thumbNodeIds: string[];
 }
 
+export interface StepperState {
+  value: number;
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
+export interface StepperHints {
+  /** Ordered fill strategies the implementation will try. */
+  fillStrategies: ("fill-value" | "keyboard" | "buttons")[];
+  /** Node IDs of the increment / decrement buttons if present. */
+  incrementNodeId?: string;
+  decrementNodeId?: string;
+}
+
 export interface DatepickerState {
   value: string | null;
   min?: string;
@@ -121,6 +136,7 @@ export interface TooltipState {
  */
 export interface WidgetStateMap {
   slider: SliderState;
+  stepper: StepperState;
   datepicker: DatepickerState;
   "daterange-picker": DaterangePickerState;
   combobox: ComboboxState;
@@ -138,6 +154,7 @@ export interface WidgetStateMap {
 
 export interface WidgetHintsMap {
   slider: SliderHints;
+  stepper: StepperHints;
   datepicker: DatepickerHints;
   "daterange-picker": DaterangePickerHints;
   combobox: ComboboxHints;
