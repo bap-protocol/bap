@@ -1,20 +1,53 @@
-import type { Page } from "playwright";
 import type { ActionResult, NavigateAction } from "@bap-protocol/spec";
-import { classifyPlaywrightError, errorResult } from "./errors.js";
+import { classifyError, errorResult, successResult } from "./errors.js";
+import type { DispatchContext } from "./cdp-helpers.js";
 
-const DEFAULT_TIMEOUT = 30_000;
-
-export async function dispatchNavigate(page: Page, action: NavigateAction): Promise<ActionResult> {
+export async function dispatchNavigate(
+  ctx: DispatchContext,
+  action: NavigateAction,
+): Promise<ActionResult> {
   const startedAt = Date.now();
-  const timeout = action.timeoutMs ?? DEFAULT_TIMEOUT;
+  const timeout = action.timeoutMs ?? 30_000;
+  const waitUntil = action.waitUntil ?? "load";
+  const eventName =
+    waitUntil === "domcontentloaded"
+      ? "Page.domContentEventFired"
+      : waitUntil === "networkidle"
+        ? "Page.lifecycleEvent"
+        : "Page.loadEventFired";
 
   try {
-    await page.goto(action.url, { waitUntil: action.waitUntil ?? "load", timeout });
-    const result: ActionResult = { success: true, durationMs: Date.now() - startedAt };
-    if (action.id !== undefined) result.id = action.id;
-    return result;
+    const done = new Promise<void>((resolve, reject) => {
+      const off = ctx.client.on(
+        eventName as "Page.loadEventFired",
+        (payload) => {
+          if (waitUntil === "networkidle") {
+            const name = (payload as { name?: string }).name;
+            if (name !== "networkIdle") return;
+          }
+          off();
+          resolve();
+        },
+      );
+      const handle = setTimeout(() => {
+        off();
+        reject(new Error(`navigate(${action.url}) timed out after ${timeout}ms`));
+      }, timeout);
+      handle.unref?.();
+    });
+
+    const navRes = await ctx.client.send("Page.navigate", { url: action.url });
+    if (navRes.errorText) {
+      return errorResult(action.id, startedAt, {
+        code: "navigation-failed",
+        message: navRes.errorText,
+        retryable: false,
+      });
+    }
+    await done;
+    return successResult(action.id, startedAt);
   } catch (err) {
-    const classified = classifyPlaywrightError(err);
+    const classified = classifyError(err);
     if (classified.code === "unknown") {
       return errorResult(action.id, startedAt, {
         code: "navigation-failed",

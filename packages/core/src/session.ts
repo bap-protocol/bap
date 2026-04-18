@@ -1,6 +1,6 @@
 import type { Action, ActionResult, BrowserState, StateDiff } from "@bap-protocol/spec";
 import { PROTOCOL_VERSION } from "@bap-protocol/spec";
-import { PlaywrightTransport } from "./transport/playwright.js";
+import { CDPTransport } from "./transport/cdp.js";
 import type { GotoOptions, Transport, TransportLaunchOptions } from "./transport/index.js";
 import { computeDiff } from "./diff/compute.js";
 
@@ -10,7 +10,7 @@ export class Session {
   private constructor(private readonly transport: Transport) {}
 
   static async launch(opts: TransportLaunchOptions = {}): Promise<Session> {
-    const transport = await PlaywrightTransport.launch(opts);
+    const transport = await CDPTransport.launch(opts);
     return new Session(transport);
   }
 

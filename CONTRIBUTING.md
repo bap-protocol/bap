@@ -14,12 +14,11 @@ We accept PRs once an RFC is finalized. Before then, implementation details may 
 
 ```bash
 pnpm install
-pnpm -F @bap-protocol/core exec playwright install chromium   # one-time, needed for tests + CLI
 pnpm -r build
 pnpm -r test
 ```
 
-`pnpm install` does not fetch browser binaries. Without the `playwright install` step, `pnpm test` and `bap inspect` / `bap act` fail with "browser not found".
+Tests and CLI launch a real Chrome via `chrome-launcher`, which auto-discovers a system installation (Chrome, Chromium, or Edge). Install one of those if you don't have it already; no extra browser binary download step is needed.
 
 ### Project structure
 
@@ -32,7 +31,7 @@ pnpm -r test
 ### Principles
 
 1. **Schema before code.** No feature ships without an RFC. Breaking schema changes bump the protocol version.
-2. **Transport-agnostic.** The spec never mentions Playwright, CDP, or WebDriver. Only `core/src/transport/` knows those exist.
+2. **Transport-agnostic.** The spec never mentions CDP, WebDriver, or any specific transport. Only `core/src/transport/` knows those exist.
 3. **Deterministic where possible.** Same input, same output. Timing-dependent fields are explicitly marked.
 4. **Testable from outside.** Compliance is measured against the conformance suite, not internal unit tests.
 5. **No site-specific or language-specific hacks.** Every solution must generalize across sites and locales.

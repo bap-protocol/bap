@@ -1,4 +1,3 @@
-import type { Page } from "playwright";
 import type {
   ActionResult,
   BrowserState,
@@ -6,21 +5,19 @@ import type {
   UploadAction,
   WidgetRef,
 } from "@bap-protocol/spec";
-import { classifyPlaywrightError, errorResult } from "./errors.js";
+import { classifyError, errorResult, successResult } from "./errors.js";
+import { type DispatchContext, resolveNode } from "./cdp-helpers.js";
 
 function isWidgetRef(ref: NodeRef | WidgetRef): ref is WidgetRef {
   return "widgetId" in ref;
 }
 
-const DEFAULT_TIMEOUT = 10_000;
-
 export async function dispatchUpload(
-  page: Page,
+  ctx: DispatchContext,
   action: UploadAction,
   state: BrowserState,
 ): Promise<ActionResult> {
   const startedAt = Date.now();
-  const timeout = action.timeoutMs ?? DEFAULT_TIMEOUT;
 
   const anchorNodeId = resolveAnchorNodeId(action, state);
   if (!anchorNodeId) {
@@ -30,7 +27,7 @@ export async function dispatchUpload(
       retryable: false,
     });
   }
-  const anchor = state.nodes.find((n) => n.id === anchorNodeId);
+  const anchor = resolveNode(state, anchorNodeId);
   if (!anchor) {
     return errorResult(action.id, startedAt, {
       code: "target-not-found",
@@ -47,18 +44,23 @@ export async function dispatchUpload(
     });
   }
 
-  try {
-    const role = anchor.role as Parameters<Page["getByRole"]>[0];
-    const locator = anchor.name
-      ? page.getByRole(role, { name: anchor.name, exact: true })
-      : page.getByRole(role);
-    await locator.first().setInputFiles(action.files, { timeout });
+  const backendNodeId = ctx.backendIdByNodeId.get(anchor.id);
+  if (backendNodeId === undefined) {
+    return errorResult(action.id, startedAt, {
+      code: "target-not-found",
+      message: `Node ${anchorNodeId} has no backend DOM id`,
+      retryable: false,
+    });
+  }
 
-    const result: ActionResult = { success: true, durationMs: Date.now() - startedAt };
-    if (action.id !== undefined) result.id = action.id;
-    return result;
+  try {
+    await ctx.client.send("DOM.setFileInputFiles", {
+      files: action.files,
+      backendNodeId,
+    });
+    return successResult(action.id, startedAt);
   } catch (err) {
-    return errorResult(action.id, startedAt, classifyPlaywrightError(err));
+    return errorResult(action.id, startedAt, classifyError(err));
   }
 }
 

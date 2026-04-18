@@ -21,30 +21,10 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        env:
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
         run: pnpm install --frozen-lockfile
 
-      - name: Resolve Playwright version
-        id: playwright-version
-        run: |
-          version=$(node -p "require('./packages/core/node_modules/playwright/package.json').version")
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
-
-      - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm -F @bap-protocol/core exec playwright install chromium --with-deps
-
-      - name: Install Playwright system deps
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: pnpm -F @bap-protocol/core exec playwright install-deps chromium
+      # ubuntu-latest ships Google Chrome at /usr/bin/google-chrome, which
+      # chrome-launcher auto-discovers. No browser-install step needed.
 
       - name: Build
         run: pnpm -r build

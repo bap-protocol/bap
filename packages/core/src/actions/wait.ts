@@ -1,14 +1,18 @@
-import type { Locator as PWLocator, Page } from "playwright";
 import type {
   ActionResult,
   Locator as BAPLocator,
   WaitAction,
 } from "@bap-protocol/spec";
-import { classifyPlaywrightError, errorResult } from "./errors.js";
+import { classifyError, errorResult, successResult } from "./errors.js";
+import type { DispatchContext } from "./cdp-helpers.js";
 
 const DEFAULT_TIMEOUT = 30_000;
+const POLL_INTERVAL = 100;
 
-export async function dispatchWait(page: Page, action: WaitAction): Promise<ActionResult> {
+export async function dispatchWait(
+  ctx: DispatchContext,
+  action: WaitAction,
+): Promise<ActionResult> {
   const startedAt = Date.now();
   const timeout = action.timeoutMs ?? DEFAULT_TIMEOUT;
   const c = action.condition;
@@ -16,19 +20,19 @@ export async function dispatchWait(page: Page, action: WaitAction): Promise<Acti
   try {
     switch (c.kind) {
       case "duration":
-        await page.waitForTimeout(c.ms);
+        await sleep(c.ms);
         break;
       case "navigation":
-        await page.waitForNavigation({ timeout });
+        await waitForEvent(ctx, "Page.frameNavigated", timeout);
         break;
       case "network-idle":
-        await page.waitForLoadState("networkidle", { timeout });
+        await waitForLifecycle(ctx, "networkIdle", timeout);
         break;
       case "node-appears":
-        await resolveLocator(page, c.locator).first().waitFor({ state: "visible", timeout });
+        await pollVisibility(ctx, c.locator, true, timeout);
         break;
       case "node-disappears":
-        await resolveLocator(page, c.locator).first().waitFor({ state: "hidden", timeout });
+        await pollVisibility(ctx, c.locator, false, timeout);
         break;
       default: {
         const never: never = c;
@@ -40,31 +44,94 @@ export async function dispatchWait(page: Page, action: WaitAction): Promise<Acti
         });
       }
     }
-    const result: ActionResult = { success: true, durationMs: Date.now() - startedAt };
-    if (action.id !== undefined) result.id = action.id;
-    return result;
+    return successResult(action.id, startedAt);
   } catch (err) {
-    return errorResult(action.id, startedAt, classifyPlaywrightError(err));
+    return errorResult(action.id, startedAt, classifyError(err));
   }
 }
 
-function resolveLocator(page: Page, loc: BAPLocator): PWLocator {
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function waitForEvent(ctx: DispatchContext, name: string, timeout: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const off = ctx.client.on(name as "Page.loadEventFired", () => {
+      off();
+      resolve();
+    });
+    const handle = setTimeout(() => {
+      off();
+      reject(new Error(`Timed out waiting for ${name}`));
+    }, timeout);
+    handle.unref?.();
+  });
+}
+
+function waitForLifecycle(ctx: DispatchContext, name: string, timeout: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const off = ctx.client.on("Page.lifecycleEvent", (payload) => {
+      if ((payload as { name: string }).name !== name) return;
+      off();
+      resolve();
+    });
+    const handle = setTimeout(() => {
+      off();
+      reject(new Error(`Timed out waiting for lifecycle ${name}`));
+    }, timeout);
+    handle.unref?.();
+  });
+}
+
+async function pollVisibility(
+  ctx: DispatchContext,
+  locator: BAPLocator,
+  shouldBeVisible: boolean,
+  timeout: number,
+): Promise<void> {
+  const selector = toCssSelector(locator);
+  const expression = `(() => {
+    const el = document.querySelector(${JSON.stringify(selector)});
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    const style = getComputedStyle(el);
+    if (style.visibility === "hidden" || style.display === "none") return false;
+    return r.width > 0 && r.height > 0;
+  })()`;
+
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const res = await ctx.client.send("Runtime.evaluate", {
+      expression,
+      returnByValue: true,
+    });
+    const visible = res.result.value === true;
+    if (visible === shouldBeVisible) return;
+    await sleep(POLL_INTERVAL);
+  }
+  throw new Error(`Timed out waiting for locator to ${shouldBeVisible ? "appear" : "disappear"}`);
+}
+
+function toCssSelector(loc: BAPLocator): string {
   switch (loc.strategy) {
     case "id":
-      return page.locator(`[id="${loc.value.replace(/"/g, '\\"')}"]`);
+      return `[id="${escapeAttr(loc.value)}"]`;
     case "testid":
-      return page.getByTestId(loc.value);
-    case "xpath":
-      return page.locator(`xpath=${loc.value}`);
+      return `[data-testid="${escapeAttr(loc.value)}"]`;
     case "css":
-      return page.locator(loc.value);
+      return loc.value;
+    case "xpath":
+      throw new Error("XPath locators are not supported by the CDP transport yet");
     case "role-name": {
-      const [role, ...rest] = loc.value.split(":");
+      const [role = "", ...rest] = loc.value.split(":");
       const name = rest.join(":");
-      const r = role as Parameters<Page["getByRole"]>[0];
       return name
-        ? page.getByRole(r, { name, exact: true })
-        : page.getByRole(r);
+        ? `[role="${escapeAttr(role)}"][aria-label="${escapeAttr(name)}"]`
+        : `[role="${escapeAttr(role)}"]`;
     }
   }
+}
+
+function escapeAttr(s: string): string {
+  return s.replace(/["\\]/g, "\\$&");
 }

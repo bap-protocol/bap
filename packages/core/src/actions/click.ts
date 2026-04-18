@@ -1,16 +1,20 @@
-import type { Page } from "playwright";
 import type { ActionResult, BrowserState, ClickAction } from "@bap-protocol/spec";
-import { classifyPlaywrightError, errorResult } from "./errors.js";
-
-const DEFAULT_TIMEOUT = 5_000;
+import { classifyError, errorResult, successResult } from "./errors.js";
+import {
+  type DispatchContext,
+  mouseClick,
+  rectCenter,
+  resolveNode,
+  scrollIntoView,
+} from "./cdp-helpers.js";
 
 export async function dispatchClick(
-  page: Page,
+  ctx: DispatchContext,
   action: ClickAction,
   state: BrowserState,
 ): Promise<ActionResult> {
   const startedAt = Date.now();
-  const target = state.nodes.find((n) => n.id === action.target.nodeId);
+  const target = resolveNode(state, action.target.nodeId);
   if (!target) {
     return errorResult(action.id, startedAt, {
       code: "target-not-found",
@@ -18,26 +22,23 @@ export async function dispatchClick(
       retryable: false,
     });
   }
+  if (!target.rect) {
+    return errorResult(action.id, startedAt, {
+      code: "target-hidden",
+      message: `Node ${action.target.nodeId} has no layout rect`,
+      retryable: true,
+    });
+  }
 
   try {
-    const role = target.role as Parameters<Page["getByRole"]>[0];
-    const locator = target.name
-      ? page.getByRole(role, { name: target.name, exact: true })
-      : page.getByRole(role);
-
-    const clickCount = action.clickCount ?? 1;
-    const button = action.button ?? "left";
-    const timeout = action.timeoutMs ?? DEFAULT_TIMEOUT;
-
-    await locator.first().click({ clickCount, button, timeout });
-
-    const result: ActionResult = {
-      success: true,
-      durationMs: Date.now() - startedAt,
-    };
-    if (action.id !== undefined) result.id = action.id;
-    return result;
+    await scrollIntoView(ctx, target.id);
+    const point = rectCenter(target.rect, state.viewport);
+    await mouseClick(ctx.client, point, {
+      button: action.button ?? "left",
+      clickCount: action.clickCount ?? 1,
+    });
+    return successResult(action.id, startedAt);
   } catch (err) {
-    return errorResult(action.id, startedAt, classifyPlaywrightError(err));
+    return errorResult(action.id, startedAt, classifyError(err));
   }
 }

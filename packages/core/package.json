@@ -24,9 +24,12 @@
   },
   "dependencies": {
     "@bap-protocol/spec": "workspace:*",
-    "playwright": "^1.48.0"
+    "chrome-launcher": "^1.1.2",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@types/ws": "^8.5.13",
+    "devtools-protocol": "^0.0.1617013",
     "tsup": "^8.0.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"

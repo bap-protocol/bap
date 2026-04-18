@@ -1,11 +1,17 @@
-import type { Page } from "playwright";
 import type { ActionResult, BrowserState, SlideAction, SliderState } from "@bap-protocol/spec";
-import { classifyPlaywrightError, errorResult } from "./errors.js";
-
-const DEFAULT_TIMEOUT = 5_000;
+import { classifyError, errorResult, successResult } from "./errors.js";
+import {
+  type DispatchContext,
+  focusElement,
+  mouseClick,
+  pressKey,
+  rectCenter,
+  resolveNode,
+  scrollIntoView,
+} from "./cdp-helpers.js";
 
 export async function dispatchSlide(
-  page: Page,
+  ctx: DispatchContext,
   action: SlideAction,
   state: BrowserState,
 ): Promise<ActionResult> {
@@ -55,44 +61,37 @@ export async function dispatchSlide(
   }
 
   const delta = targetValue - currentValue;
-  if (delta === 0) return success(action.id, startedAt);
+  if (delta === 0) return successResult(action.id, startedAt);
 
   const anchorId = widget.nodeIds[0];
-  const anchor = anchorId ? state.nodes.find((n) => n.id === anchorId) : undefined;
-  if (!anchor) {
+  const anchor = anchorId ? resolveNode(state, anchorId) : undefined;
+  if (!anchor || !anchor.rect) {
     return errorResult(action.id, startedAt, {
       code: "target-not-found",
-      message: "Slider anchor node not found",
+      message: "Slider anchor node not found or has no rect",
       retryable: false,
     });
   }
 
-  const timeout = action.timeoutMs ?? DEFAULT_TIMEOUT;
-
   try {
-    const role = anchor.role as Parameters<Page["getByRole"]>[0];
-    const locator = anchor.name
-      ? page.getByRole(role, { name: anchor.name, exact: true })
-      : page.getByRole(role);
-    const first = locator.first();
-
-    await first.focus({ timeout });
+    await scrollIntoView(ctx, anchor.id);
+    const focused = await focusElement(ctx, anchor.id);
+    if (!focused) {
+      // DOM.focus failed (e.g. missing backend id); fall back to a click —
+      // but note that clicking the slider track itself will jump the thumb
+      // to the click position.
+      await mouseClick(ctx.client, rectCenter(anchor.rect, state.viewport));
+    }
 
     const step = sliderState.step ?? 1;
     const presses = Math.round(Math.abs(delta) / step);
     const key = delta > 0 ? "ArrowRight" : "ArrowLeft";
     for (let i = 0; i < presses; i++) {
-      await first.press(key, { timeout });
+      await pressKey(ctx.client, key);
     }
 
-    return success(action.id, startedAt);
+    return successResult(action.id, startedAt);
   } catch (err) {
-    return errorResult(action.id, startedAt, classifyPlaywrightError(err));
+    return errorResult(action.id, startedAt, classifyError(err));
   }
-}
-
-function success(id: string | undefined, startedAt: number): ActionResult {
-  const result: ActionResult = { success: true, durationMs: Date.now() - startedAt };
-  if (id !== undefined) result.id = id;
-  return result;
 }

@@ -2,7 +2,7 @@
 
 Reference implementation of the Browser Agent Protocol.
 
-Exposes a single `Session` that can capture `BrowserState`, dispatch `Action`s, and compute `StateDiff` between snapshots. Uses Playwright as the transport for v0.1; a CDP-direct transport is planned for v0.2.
+Exposes a single `Session` that can capture `BrowserState`, dispatch `Action`s, and compute `StateDiff` between snapshots. Talks Chrome DevTools Protocol directly — spawns Chrome via `chrome-launcher` and drives it over a WebSocket/JSON-RPC client.
 
 ## Status
 

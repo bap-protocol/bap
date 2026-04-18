@@ -1,6 +1,6 @@
-import type { CDPSession, Page } from "playwright";
 import type { BrowserState, Frame, Metadata, Node, Overlay, Rect, Viewport, Widget } from "@bap-protocol/spec";
 import { PROTOCOL_VERSION } from "@bap-protocol/spec";
+import type { CDPSession } from "../transport/cdp-client.js";
 import { axNodesToNodes, type CDPAXNode } from "./accessibility.js";
 import { buildRectMap } from "./layout.js";
 import { buildDOMMetaMap, type DOMMeta } from "./dom-meta.js";
@@ -12,16 +12,27 @@ interface CDPFrame {
   url: string;
 }
 
-export async function extractBrowserState(page: Page): Promise<BrowserState> {
-  const url = page.url();
-  const [title, viewport, metadata] = await Promise.all([
-    page.title(),
-    extractViewport(page),
-    extractMetadata(page),
+export interface ExtractResult {
+  state: BrowserState;
+  /** Sidecar: map from Node.id → CDP backendNodeId. Used by the transport to
+   * issue DOM-scoped CDP calls (DOM.setFileInputFiles, DOM.focus, etc.). */
+  backendIdByNodeId: Map<string, number>;
+}
+
+export async function extractBrowserState(client: CDPSession): Promise<BrowserState> {
+  return (await extractBrowserStateWithBackendIds(client)).state;
+}
+
+export async function extractBrowserStateWithBackendIds(
+  client: CDPSession,
+): Promise<ExtractResult> {
+  const [viewport, pageInfo] = await Promise.all([
+    extractViewport(client),
+    extractPageInfo(client),
   ]);
 
   const { frames: cdpFrames, axByFrame, rectByBackendId, domByBackendId } =
-    await extractAxAndLayout(page, viewport);
+    await extractAxAndLayout(client, viewport);
 
   const frames: Frame[] = cdpFrames.map((f) => {
     const frame: Frame = { id: f.id, url: f.url };
@@ -31,11 +42,15 @@ export async function extractBrowserState(page: Page): Promise<BrowserState> {
 
   const nodes: Node[] = [];
   const byAxId = new Map<string, CDPAXNode>();
+  const backendIdByNodeId = new Map<string, number>();
   for (const frame of cdpFrames) {
     const axNodes = axByFrame[frame.id] ?? [];
     nodes.push(...axNodesToNodes(axNodes, frame.id, rectByBackendId));
     for (const ax of axNodes) {
       byAxId.set(`${frame.id}:${ax.nodeId}`, ax);
+      if (!ax.ignored && ax.backendDOMNodeId !== undefined) {
+        backendIdByNodeId.set(`${frame.id}:${ax.nodeId}`, ax.backendDOMNodeId);
+      }
     }
   }
 
@@ -49,21 +64,21 @@ export async function extractBrowserState(page: Page): Promise<BrowserState> {
   const state: BrowserState = {
     version: PROTOCOL_VERSION,
     capturedAt: new Date().toISOString(),
-    url,
-    title,
+    url: pageInfo.url,
+    title: pageInfo.title,
     viewport,
     frames,
     nodes,
     widgets,
     overlays,
-    metadata,
+    metadata: pageInfo.metadata,
   };
   if (focusedNode) state.focus = { nodeId: focusedNode.id, frameId: focusedNode.frameId };
-  return state;
+  return { state, backendIdByNodeId };
 }
 
 async function extractAxAndLayout(
-  page: Page,
+  client: CDPSession,
   viewport: Viewport,
 ): Promise<{
   frames: CDPFrame[];
@@ -71,40 +86,31 @@ async function extractAxAndLayout(
   rectByBackendId: Map<number, Rect>;
   domByBackendId: Map<number, DOMMeta>;
 }> {
-  const client: CDPSession = await page.context().newCDPSession(page);
-  try {
-    await Promise.all([
-      client.send("Accessibility.enable"),
-      client.send("DOMSnapshot.enable"),
-    ]);
+  await Promise.all([
+    client.send("Accessibility.enable"),
+    client.send("DOMSnapshot.enable"),
+  ]);
 
-    const frameTreeRes = (await client.send("Page.getFrameTree")) as {
-      frameTree: CDPFrameTree;
-    };
-    const frames = flattenFrames(frameTreeRes.frameTree);
+  const frameTreeRes = await client.send("Page.getFrameTree");
+  const frames = flattenFrames(frameTreeRes.frameTree as unknown as CDPFrameTree);
 
-    const axByFrame: Record<string, CDPAXNode[]> = {};
-    for (const frame of frames) {
-      try {
-        const axRes = (await client.send("Accessibility.getFullAXTree", {
-          frameId: frame.id,
-        })) as { nodes: CDPAXNode[] };
-        axByFrame[frame.id] = axRes.nodes;
-      } catch {
-        // Cross-origin or detached frames may refuse AX queries; skip them
-        // rather than failing the whole snapshot.
-        axByFrame[frame.id] = [];
-      }
+  const axByFrame: Record<string, CDPAXNode[]> = {};
+  for (const frame of frames) {
+    try {
+      const axRes = await client.send("Accessibility.getFullAXTree", { frameId: frame.id });
+      axByFrame[frame.id] = axRes.nodes as unknown as CDPAXNode[];
+    } catch {
+      // Cross-origin or detached frames may refuse AX queries; skip them
+      // rather than failing the whole snapshot.
+      axByFrame[frame.id] = [];
     }
-
-    const snapRes = await client.send("DOMSnapshot.captureSnapshot", { computedStyles: [] });
-    const rectByBackendId = buildRectMap(snapRes, viewport);
-    const domByBackendId = buildDOMMetaMap(snapRes);
-
-    return { frames, axByFrame, rectByBackendId, domByBackendId };
-  } finally {
-    await client.detach();
   }
+
+  const snapRes = await client.send("DOMSnapshot.captureSnapshot", { computedStyles: [] });
+  const rectByBackendId = buildRectMap(snapRes, viewport);
+  const domByBackendId = buildDOMMetaMap(snapRes);
+
+  return { frames, axByFrame, rectByBackendId, domByBackendId };
 }
 
 interface CDPFrameTree {
@@ -156,20 +162,47 @@ function extractOverlays(nodes: Node[], widgets: Widget[]): Overlay[] {
   return overlays;
 }
 
-function extractViewport(page: Page): Promise<Viewport> {
-  return page.evaluate(() => ({
-    width: window.innerWidth,
-    height: window.innerHeight,
-    devicePixelRatio: window.devicePixelRatio,
-    scrollX: window.scrollX,
-    scrollY: window.scrollY,
-  }));
+async function extractViewport(client: CDPSession): Promise<Viewport> {
+  const res = await client.send("Runtime.evaluate", {
+    expression: `JSON.stringify({
+      width: window.innerWidth,
+      height: window.innerHeight,
+      devicePixelRatio: window.devicePixelRatio,
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+    })`,
+    returnByValue: true,
+  });
+  return JSON.parse((res.result.value as string) ?? "{}") as Viewport;
 }
 
-function extractMetadata(page: Page): Promise<Metadata> {
-  return page.evaluate(() => ({
-    userAgent: navigator.userAgent,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    language: navigator.language,
-  }));
+interface PageInfo {
+  url: string;
+  title: string;
+  metadata: Metadata;
+}
+
+async function extractPageInfo(client: CDPSession): Promise<PageInfo> {
+  const res = await client.send("Runtime.evaluate", {
+    expression: `JSON.stringify({
+      url: location.href,
+      title: document.title,
+      userAgent: navigator.userAgent,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      language: navigator.language,
+    })`,
+    returnByValue: true,
+  });
+  const o = JSON.parse((res.result.value as string) ?? "{}") as {
+    url: string;
+    title: string;
+    userAgent: string;
+    timezone: string;
+    language: string;
+  };
+  return {
+    url: o.url,
+    title: o.title,
+    metadata: { userAgent: o.userAgent, timezone: o.timezone, language: o.language },
+  };
 }

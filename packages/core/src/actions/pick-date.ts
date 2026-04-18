@@ -1,21 +1,28 @@
-import type { Page } from "playwright";
 import type {
   ActionResult,
   BrowserState,
   PickDateAction,
 } from "@bap-protocol/spec";
-import { classifyPlaywrightError, errorResult } from "./errors.js";
+import { classifyError, errorResult, successResult } from "./errors.js";
+import {
+  clearInput,
+  type DispatchContext,
+  focusElement,
+  mouseClick,
+  rectCenter,
+  resolveNode,
+  scrollIntoView,
+  typeText,
+} from "./cdp-helpers.js";
 
-const DEFAULT_TIMEOUT = 5_000;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function dispatchPickDate(
-  page: Page,
+  ctx: DispatchContext,
   action: PickDateAction,
   state: BrowserState,
 ): Promise<ActionResult> {
   const startedAt = Date.now();
-  const timeout = action.timeoutMs ?? DEFAULT_TIMEOUT;
 
   const widget = state.widgets.find((w) => w.id === action.target.widgetId);
   if (!widget) {
@@ -42,7 +49,7 @@ export async function dispatchPickDate(
           retryable: false,
         });
       }
-      await fillDateInput(page, state, widget.nodeIds[0]!, action.date, timeout);
+      await fillDateInput(ctx, state, widget.nodeIds[0]!, action.date);
     } else {
       if (
         typeof action.date !== "object" ||
@@ -63,32 +70,60 @@ export async function dispatchPickDate(
           retryable: false,
         });
       }
-      await fillDateInput(page, state, startNodeId, action.date.start, timeout);
-      await fillDateInput(page, state, endNodeId, action.date.end, timeout);
+      await fillDateInput(ctx, state, startNodeId, action.date.start);
+      await fillDateInput(ctx, state, endNodeId, action.date.end);
     }
 
-    const result: ActionResult = { success: true, durationMs: Date.now() - startedAt };
-    if (action.id !== undefined) result.id = action.id;
-    return result;
+    return successResult(action.id, startedAt);
   } catch (err) {
-    return errorResult(action.id, startedAt, classifyPlaywrightError(err));
+    return errorResult(action.id, startedAt, classifyError(err));
   }
 }
 
 async function fillDateInput(
-  page: Page,
+  ctx: DispatchContext,
   state: BrowserState,
   nodeId: string,
   iso: string,
-  timeout: number,
 ): Promise<void> {
-  const node = state.nodes.find((n) => n.id === nodeId);
+  const node = resolveNode(state, nodeId);
   if (!node) throw new Error(`Date input node ${nodeId} not found`);
-  // Chromium exposes <input type="date"> with AX role "date", which is not
-  // a standard ARIA role Playwright's getByRole understands. Resolve the
-  // element by its accessible label instead.
-  const locator = node.name
-    ? page.getByLabel(node.name, { exact: true })
-    : page.locator('input[type="date"]');
-  await locator.first().fill(iso, { timeout });
+
+  const backendNodeId = ctx.backendIdByNodeId.get(node.id);
+  if (backendNodeId !== undefined) {
+    // Native <input type="date"> takes the ISO string verbatim via its value
+    // setter. This bypasses locale-dependent keyboard parsing.
+    const resolved = await ctx.client.send("DOM.resolveNode", { backendNodeId });
+    const objectId = resolved.object.objectId;
+    if (objectId) {
+      try {
+        const res = await ctx.client.send("Runtime.callFunctionOn", {
+          objectId,
+          functionDeclaration: `function(iso){
+            if (this.tagName === "INPUT" && (this.type === "date" || this.type === "text")) {
+              this.value = iso;
+              this.dispatchEvent(new Event("input", { bubbles: true }));
+              this.dispatchEvent(new Event("change", { bubbles: true }));
+              return true;
+            }
+            return false;
+          }`,
+          arguments: [{ value: iso }],
+          returnByValue: true,
+        });
+        if (res.result.value === true) return;
+      } finally {
+        await ctx.client.send("Runtime.releaseObject", { objectId }).catch(() => {});
+      }
+    }
+  }
+
+  // Fallback: focus the element and type the ISO string.
+  await scrollIntoView(ctx, node.id);
+  const focused = await focusElement(ctx, node.id);
+  if (!focused && node.rect) {
+    await mouseClick(ctx.client, rectCenter(node.rect, state.viewport));
+  }
+  await clearInput(ctx);
+  await typeText(ctx.client, iso);
 }
