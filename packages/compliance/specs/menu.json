@@ -1,0 +1,15 @@
+{
+  "name": "menu — open role=menu with menuitems",
+  "fixture": { "kind": "file", "path": "menu.html" },
+  "expectations": {
+    "title": "BAP Compliance: menu",
+    "widgets": [
+      {
+        "type": "menu",
+        "state": { "open": true },
+        "hints": { "openTrigger": "click" }
+      }
+    ],
+    "overlays": []
+  }
+}

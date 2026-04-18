@@ -71,11 +71,8 @@ function loadFixture(spec: ComplianceSpec): string {
 export function loadBundledSpecs(): ComplianceSpec[] {
   const here = dirname(fileURLToPath(import.meta.url));
   const specsDir = resolve(here, "..", "specs");
-  // v0.1 MVP: hand-enumerated list covering every widget type with a
-  // detector in @bap-protocol/core. Widgets declared in the spec but
-  // without a v0.1 detector (menu, tabs, accordion, tooltip) are not
-  // represented here — adding fixtures for them would surface
-  // false-positive failures until v0.2 ships the detectors.
+  // v0.1 MVP: hand-enumerated list covering every widget type defined
+  // in RFC 0001. A v0.2 follow-up walks the directory dynamically.
   const names = [
     "slider.json",
     "stepper.json",
@@ -88,6 +85,10 @@ export function loadBundledSpecs(): ComplianceSpec[] {
     "datepicker.json",
     "daterange-picker.json",
     "dialog.json",
+    "tabs.json",
+    "menu.json",
+    "accordion.json",
+    "tooltip.json",
   ];
   return names.map((n) => JSON.parse(readFileSync(resolve(specsDir, n), "utf8")) as ComplianceSpec);
 }

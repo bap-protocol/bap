@@ -1,0 +1,14 @@
+{
+  "name": "tabs — role=tablist with selected tab",
+  "fixture": { "kind": "file", "path": "tabs.html" },
+  "expectations": {
+    "title": "BAP Compliance: tabs",
+    "widgets": [
+      {
+        "type": "tabs",
+        "state": { "selected": "Pricing" }
+      }
+    ],
+    "overlays": []
+  }
+}

@@ -184,6 +184,82 @@ describe("Widget detection", () => {
     expect((sw!.state as { checked: boolean }).checked).toBe(true);
   });
 
+  it("detects a tablist with tabs and a selected one", async () => {
+    const html = `<!doctype html>
+<html><body>
+  <div role="tablist" aria-label="Sections">
+    <button role="tab" aria-selected="false" tabindex="0">Overview</button>
+    <button role="tab" aria-selected="true" tabindex="0">Pricing</button>
+    <button role="tab" aria-selected="false" tabindex="0">FAQ</button>
+  </div>
+</body></html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+
+    const tabs = state.widgets.find((w) => w.type === "tabs");
+    expect(tabs, "tabs widget detected").toBeDefined();
+    const s = tabs!.state as { selected: string; items: { label: string }[] };
+    expect(s.selected).toBe("Pricing");
+    expect(s.items.map((i) => i.label)).toEqual(["Overview", "Pricing", "FAQ"]);
+  });
+
+  it("detects an open role=menu with menuitems", async () => {
+    const html = `<!doctype html>
+<html><body>
+  <div role="menu" aria-label="File">
+    <div role="menuitem" tabindex="-1">New</div>
+    <div role="menuitem" tabindex="-1">Open</div>
+    <div role="menuitem" aria-disabled="true" tabindex="-1">Save</div>
+  </div>
+</body></html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+
+    const menu = state.widgets.find((w) => w.type === "menu");
+    expect(menu, "menu widget detected").toBeDefined();
+    const s = menu!.state as { open: boolean; items: { label: string; disabled?: boolean }[] };
+    expect(s.open).toBe(true);
+    expect(s.items.map((i) => i.label)).toEqual(["New", "Open", "Save"]);
+  });
+
+  it("detects an accordion from sibling expandable buttons", async () => {
+    const html = `<!doctype html>
+<html><body>
+  <div>
+    <h3><button aria-expanded="true" aria-controls="p1">Section A</button></h3>
+    <div id="p1" role="region">Content A</div>
+    <h3><button aria-expanded="false" aria-controls="p2">Section B</button></h3>
+    <div id="p2" role="region" hidden>Content B</div>
+    <h3><button aria-expanded="false" aria-controls="p3">Section C</button></h3>
+    <div id="p3" role="region" hidden>Content C</div>
+  </div>
+</body></html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+
+    const acc = state.widgets.find((w) => w.type === "accordion");
+    expect(acc, "accordion widget detected").toBeDefined();
+    const s = acc!.state as { expanded: string[]; items: { label: string }[] };
+    expect(s.expanded).toEqual(["Section A"]);
+    expect(s.items.map((i) => i.label)).toEqual(["Section A", "Section B", "Section C"]);
+  });
+
+  it("detects a role=tooltip widget with its text", async () => {
+    const html = `<!doctype html>
+<html><body>
+  <button aria-describedby="t1">Info</button>
+  <div role="tooltip" id="t1">This is helpful</div>
+</body></html>`;
+    await session.goto(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const state = await session.snapshot();
+
+    const tip = state.widgets.find((w) => w.type === "tooltip");
+    expect(tip, "tooltip widget detected").toBeDefined();
+    const s = tip!.state as { visible: boolean; text?: string };
+    expect(s.visible).toBe(true);
+    expect(s.text).toBe("This is helpful");
+  });
+
   it("detects a native date input as a datepicker widget", async () => {
     const html = `<!doctype html>
 <html><body>

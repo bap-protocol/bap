@@ -1,0 +1,14 @@
+{
+  "name": "tooltip — role=tooltip with text",
+  "fixture": { "kind": "file", "path": "tooltip.html" },
+  "expectations": {
+    "title": "BAP Compliance: tooltip",
+    "widgets": [
+      {
+        "type": "tooltip",
+        "state": { "visible": true, "text": "This is helpful" }
+      }
+    ],
+    "overlays": []
+  }
+}

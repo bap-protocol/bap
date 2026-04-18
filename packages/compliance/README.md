@@ -4,7 +4,7 @@ Conformance test suite for BAP implementations. Fixture-based, adapter-driven, t
 
 ## Status
 
-v0.1 scaffold with 11 widget-type fixtures covering every widget type that has a detector in `@bap-protocol/core`:
+v0.1 complete — 15 fixtures, one per widget type in RFC 0001. All 15 pass against `@bap-protocol/core`.
 
 | Widget | Detector | Fixture |
 |---|---|---|
@@ -19,12 +19,10 @@ v0.1 scaffold with 11 widget-type fixtures covering every widget type that has a
 | `datepicker` | ✓ | ✓ |
 | `daterange-picker` | ✓ | ✓ |
 | `dialog` | ✓ | ✓ |
-| `menu` | — | — (v0.2) |
-| `tabs` | — | — (v0.2) |
-| `accordion` | — | — (v0.2) |
-| `tooltip` | — | — (v0.2) |
-
-The four uncovered widget types are declared in RFC 0001 but lack a detector in the v0.1 reference implementation. Adding them is a v0.2 scope item; the suite will grow to match.
+| `tabs` | ✓ | ✓ |
+| `menu` | ✓ | ✓ |
+| `accordion` | ✓ | ✓ |
+| `tooltip` | ✓ | ✓ |
 
 ## How it works
 

@@ -73,12 +73,11 @@ export function axNodesToNodes(
     const node: Node = {
       id: prefix(ax.nodeId),
       role,
-      childIds: (ax.childIds ?? [])
-        .filter((cid) => {
-          const c = byId.get(cid);
-          return c !== undefined && !c.ignored;
-        })
-        .map(prefix),
+      // Chromium emits ignored `role="none"` wrappers (e.g. plain <div>)
+      // in the AX tree. Skipping them naively would break the parent/child
+      // chain; we instead descend through ignored nodes to collect the
+      // first non-ignored descendants, preserving semantic reachability.
+      childIds: firstNonIgnoredDescendants(ax.nodeId, byId).map(prefix),
       frameId,
       interactable: INTERACTABLE_ROLES.has(role),
       editable: EDITABLE_ROLES.has(role),
@@ -89,7 +88,7 @@ export function axNodesToNodes(
     if (description) node.description = description;
     if (value !== undefined && value !== null) node.value = String(value);
 
-    const parentId = parentOf.get(ax.nodeId);
+    const parentId = firstNonIgnoredAncestor(ax.nodeId, byId, parentOf);
     if (parentId) node.parentId = prefix(parentId);
 
     if (ax.backendDOMNodeId !== undefined && rectByBackendId) {
@@ -101,6 +100,41 @@ export function axNodesToNodes(
   }
 
   return nodes;
+}
+
+function firstNonIgnoredAncestor(
+  axId: string,
+  byId: Map<string, CDPAXNode>,
+  parentOf: Map<string, string>,
+): string | undefined {
+  let current = parentOf.get(axId);
+  while (current !== undefined) {
+    const n = byId.get(current);
+    if (n && !n.ignored) return current;
+    const next = parentOf.get(current);
+    if (next === undefined) return undefined;
+    current = next;
+  }
+  return undefined;
+}
+
+function firstNonIgnoredDescendants(
+  axId: string,
+  byId: Map<string, CDPAXNode>,
+): string[] {
+  const result: string[] = [];
+  const walk = (id: string) => {
+    const n = byId.get(id);
+    if (!n) return;
+    if (!n.ignored) {
+      result.push(id);
+      return; // stop at first non-ignored, deeper descendants attach to it
+    }
+    for (const cid of n.childIds ?? []) walk(cid);
+  };
+  const root = byId.get(axId);
+  for (const cid of root?.childIds ?? []) walk(cid);
+  return result;
 }
 
 function asString(v: CDPAXValue | undefined): string | undefined {

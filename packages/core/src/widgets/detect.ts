@@ -11,6 +11,10 @@ import { detectFileupload } from "./fileupload.js";
 import { detectDaterangePicker } from "./daterange-picker.js";
 import { detectDatepicker } from "./datepicker.js";
 import { detectDialog } from "./dialog.js";
+import { detectMenu } from "./menu.js";
+import { detectTabs } from "./tabs.js";
+import { detectAccordion } from "./accordion.js";
+import { detectTooltip } from "./tooltip.js";
 
 export type WidgetDraft = Omit<Widget, "id">;
 
@@ -55,13 +59,16 @@ export function detectWidgets(
 }
 
 function tryDetect(node: Node, ax: CDPAXNode, ctx: DetectContext): WidgetDraft | null {
-  // Composite widgets (daterange, radiogroup, checkboxgroup) run first so
-  // they can claim their constituent nodes before the single-node detectors
-  // reach them.
+  // Composite widgets (daterange, radiogroup, checkboxgroup, tabs, menu,
+  // accordion) run first so they can claim their constituent nodes before
+  // the single-node detectors reach them.
   return (
     detectDaterangePicker(node, ax, ctx) ??
     detectRadiogroup(node, ax, ctx) ??
     detectCheckboxgroup(node, ax, ctx) ??
+    detectTabs(node, ax, ctx) ??
+    detectMenu(node, ax, ctx) ??
+    detectAccordion(node, ax, ctx) ??
     detectSlider(node, ax) ??
     detectStepper(node, ax) ??
     detectCombobox(node, ax) ??
@@ -69,6 +76,7 @@ function tryDetect(node: Node, ax: CDPAXNode, ctx: DetectContext): WidgetDraft |
     detectFileupload(node, ax, ctx) ??
     detectDatepicker(node, ax, ctx) ??
     detectDialog(node, ax) ??
+    detectTooltip(node, ax) ??
     null
   );
 }

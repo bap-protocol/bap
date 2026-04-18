@@ -1,0 +1,14 @@
+{
+  "name": "accordion — sibling buttons with aria-expanded",
+  "fixture": { "kind": "file", "path": "accordion.html" },
+  "expectations": {
+    "title": "BAP Compliance: accordion",
+    "widgets": [
+      {
+        "type": "accordion",
+        "state": { "expanded": ["Section A"] }
+      }
+    ],
+    "overlays": []
+  }
+}
